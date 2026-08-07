@@ -10,11 +10,14 @@ Route::post('/register', [AuthController::class, 'register']);
 
 Route::post('/login', [AuthController::class, 'login']);
 
-Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
-
 Route::middleware('auth:sanctum')->group(function () {
 
+    Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/todos', [TodoController::class, 'store']);
+    Route::get('/todos', [TodoController::class, 'index']);
+    Route::get('/todos/{id}', [TodoController::class, 'show']);
+    Route::put('/todos/{id}', [TodoController::class, 'update']);
+    Route::delete('/todos/{id}', [TodoController::class, 'destroy']);
 
 });
 
