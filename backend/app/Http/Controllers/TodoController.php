@@ -77,4 +77,22 @@ public function destroy($id)
         'message' => 'Todo deleted successfully'
     ], 200);
 }
+
+public function toggleComplete(Todo $todo)
+{
+    // Ensure the todo belongs to the logged-in user
+    if ($todo->user_id !== auth()->id()) {
+        return response()->json([
+            'message' => 'Unauthorized'
+        ], 403);
+    }
+
+    $todo->completed = !$todo->completed;
+    $todo->save();
+
+    return response()->json([
+        'message' => 'Todo updated successfully',
+        'todo' => $todo
+    ]);
+}
 }
