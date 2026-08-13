@@ -3,7 +3,7 @@
 import { AxiosError } from "axios";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import api from "@/services/api";
 import type { AuthResponse } from "@/types/auth";
 
@@ -11,11 +11,19 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Track whether the login request is currently being processed.
   const router = useRouter();
 
+  useEffect(() => {
+    const token = window.localStorage.getItem("token");
+
+    if (token) {
+      router.replace("/dashboard");
+    }
+  }, [router]);
+
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+    event.preventDefault(); // Prevent the browser from performing a normal form submission.
     setError("");
     setIsSubmitting(true);
 
@@ -24,19 +32,19 @@ export default function LoginPage() {
         email,
         password,
       });
-      const { token, user } = response.data;
+      const { token, user } = response.data;  // Extract the authentication token and user information returned by the Laravel API.
 
       window.localStorage.setItem("token", token);
       window.localStorage.setItem("user", JSON.stringify(user));
       router.push("/dashboard");
     } catch (err) {
-      const axiosError = err as AxiosError<{ message?: string }>;
+      const axiosError = err as AxiosError<{ message?: string }>; // Handle errors returned by the Laravel API.
       setError(
         axiosError.response?.data?.message ||
           "Login failed. Please check your credentials.",
       );
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false); // Stop the loading state whether the request succeeds or fails.
     }
   };
 

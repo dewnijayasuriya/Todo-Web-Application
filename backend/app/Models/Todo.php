@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Todo extends Model
 {
+    // $fillable defines which model attributes can be assigned through mass assignment methods such as create() and update().
+    // This is a security feature to prevent mass assignment vulnerabilities.
     protected $fillable = [
         'title',
         'description',

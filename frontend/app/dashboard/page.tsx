@@ -10,7 +10,7 @@ type FilterMode = "all" | "active" | "completed";
 
 export default function Dashboard() {
   const [todos, setTodos] = useState<Todo[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Track whether the todos are being fetched from the backend.
   const [title, setTitle] = useState("");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterMode>("all");
@@ -55,7 +55,7 @@ export default function Dashboard() {
 
     if (storedUser) {
       const frameId = window.requestAnimationFrame(() => {
-        setCurrentUser(JSON.parse(storedUser) as User);
+        setCurrentUser(JSON.parse(storedUser) as User); //get the stored user from local storage and converts it back into the javascript object
         void fetchTodos();
       });
 
@@ -84,7 +84,7 @@ export default function Dashboard() {
         title,
       });
 
-      setTodos((previous) => [response.data.todo, ...previous]);
+      setTodos((previous) => [response.data.todo, ...previous]); //frontend immediately adds the returned Todo to state
       setTitle("");
       setError("");
       setSuccess("Todo created successfully.");
@@ -93,6 +93,7 @@ export default function Dashboard() {
     }
   };
 
+  // Toggle completion by sending the updated todo to the backend.
   const toggleTodo = async (todo: Todo) => {
     try {
       const response = await api.put<TodoCreateResponse>(`/todos/${todo.id}`, {
@@ -143,7 +144,7 @@ export default function Dashboard() {
   const deleteTodo = async (id: number) => {
     try {
       await api.delete(`/todos/${id}`);
-      setTodos((previous) => previous.filter((todo) => todo.id !== id));
+      setTodos((previous) => previous.filter((todo) => todo.id !== id)); // use filter to create a new array containing every todo excepts the deleted one
       setError("");
       setSuccess("Todo deleted successfully.");
     } catch {
@@ -157,14 +158,16 @@ export default function Dashboard() {
     router.push("/login");
   };
 
+  // handling multiple API requests
   const clearCompleted = async () => {
-    const completedTodos = todos.filter((todo) => todo.completed);
+    const completedTodos = todos.filter((todo) => todo.completed); //find all completed Todos
 
     try {
       await Promise.all(
-        completedTodos.map((todo) => api.delete(`/todos/${todo.id}`)),
+        //waits untill all of them finish
+        completedTodos.map((todo) => api.delete(`/todos/${todo.id}`)), //sends multiple delete reqs
       );
-      setTodos((previous) => previous.filter((todo) => !todo.completed));
+      setTodos((previous) => previous.filter((todo) => !todo.completed)); // removes the completed items from the UI
       setError("");
       setSuccess("Completed todos cleared.");
     } catch {
@@ -172,6 +175,7 @@ export default function Dashboard() {
     }
   };
 
+  // Search and filter the already-fetched todos on the client side.
   const filteredTodos = todos.filter((todo) => {
     const matchesSearch = todo.title
       .toLowerCase()
@@ -192,7 +196,7 @@ export default function Dashboard() {
     return true;
   });
 
-  const itemsLeft = todos.filter((todo) => !todo.completed).length;
+  const itemsLeft = todos.filter((todo) => !todo.completed).length; //This counts pending Todos.
 
   const startEditing = (todo: Todo) => {
     setEditingTodoId(todo.id);
@@ -445,6 +449,7 @@ export default function Dashboard() {
                 <button
                   type="button"
                   onClick={() => void clearCompleted()}
+                  disabled={!todos.some((todo) => todo.completed)}
                   className="font-medium text-slate-600 transition hover:text-blue-600"
                 >
                   Clear Completed

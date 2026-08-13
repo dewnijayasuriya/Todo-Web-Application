@@ -14,7 +14,7 @@ class TodoController extends Controller
         'description' => 'nullable|string', // Description is optional but must be text if provided.
     ]);
 
-    $todo = Todo::create([ // inserts a new row into PostgreSQL.
+    $todo = Todo::create([ // inserts a new row into PostgreSQL. Eloquent method that creates a new Todo model
         'title' => $validated['title'],
         'description' => $validated['description'] ?? null, // If description exists use it
         'completed' => false, // Every new Todo starts as incomplete.
@@ -84,11 +84,12 @@ public function toggleComplete(Todo $todo)
     if ($todo->user_id !== auth()->id()) {
         return response()->json([
             'message' => 'Unauthorized'
-        ], 403);
+        ], 403); // You are authenticated, but you don't have permission to perform this action (403 Forbidden)
     }
 
+    // Toggle the completion status of the todo item. If it was completed, mark it as pending, and vice versa.
     $todo->completed = !$todo->completed;
-    $todo->save();
+    $todo->save(); // Save the updated status to the database.
 
     return response()->json([
         'message' => 'Todo updated successfully',

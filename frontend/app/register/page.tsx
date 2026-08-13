@@ -14,14 +14,14 @@ export default function RegisterPage() {
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Track whether the register request is currently being processed.
   const router = useRouter();
 
   const handleRegister = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setMessage("");
+    setMessage(""); //reset previous success or error msgs
     setError("");
-    setIsSubmitting(true);
+    setIsSubmitting(true); //start the loading state, the button becomes creating account...
 
     try {
       const response = await api.post<AuthResponse>("/register", {

@@ -13,8 +13,8 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $validated = $request->validate([ 
-            'name' => 'required|string|max:255', //checks thatname is required,
-            'email' => 'required|email|unique:users,email', // email is valid and unique
+            'name' => 'required|string|max:255', 
+            'email' => 'required|email|unique:users,email', 
             'password' => 'required|min:6|confirmed', // password has at least 6 characters and password_confirmation matches password
         ]);
 
@@ -24,7 +24,7 @@ class AuthController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $token = $user->createToken('auth_token')->plainTextToken; //creating authentication token for the user using Laravel Sanctum.
 
         return response()->json([
             'message' => 'User registered successfully',
@@ -34,7 +34,7 @@ class AuthController extends Controller
     }
 
     public function login(Request $request)
-{
+    {
     $validated = $request->validate([
         'email' => 'required|email',
         'password' => 'required',
@@ -59,7 +59,7 @@ class AuthController extends Controller
 
 public function logout(Request $request)
 {
-    $request->user()->currentAccessToken()->delete();
+    $request->user()->currentAccessToken()->delete(); // gives current authenticated user and gets the current access token and deletes it.
 
     return response()->json([
         'message' => 'Logged out successfully'
