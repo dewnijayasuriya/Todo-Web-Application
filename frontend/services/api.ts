@@ -21,6 +21,12 @@ api.interceptors.request.use(
       }
     }
 
+    // Let axios set the multipart boundary itself for FormData payloads
+    // instead of the instance's default application/json content type.
+    if (config.data instanceof FormData && config.headers) {
+      delete (config.headers as Record<string, string>)["Content-Type"];
+    }
+
     return config;
   },
   (error) => Promise.reject(error),

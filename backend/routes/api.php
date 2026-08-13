@@ -17,6 +17,10 @@ Route::middleware('auth:sanctum')->group(function () { //check whether this req 
     Route::get('/todos', [TodoController::class, 'index']);
     Route::get('/todos/{id}', [TodoController::class, 'show']);
     Route::put('/todos/{id}', [TodoController::class, 'update']);
+    // Multipart updates (e.g. replacing an image) must arrive as POST with
+    // a Laravel `_method=PUT` spoof field, since PHP only parses multipart
+    // bodies for POST requests.
+    Route::post('/todos/{id}', [TodoController::class, 'update']);
     Route::delete('/todos/{id}', [TodoController::class, 'destroy']);
     Route::patch('/todos/{todo}', [TodoController::class, 'toggleComplete']); //changes the completion status (pending/completed) of a todo item.
 

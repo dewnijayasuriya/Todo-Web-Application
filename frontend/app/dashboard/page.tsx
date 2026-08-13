@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/services/api";
+import CreateTodoModal from "@/components/CreateTodoModal";
+import UpdateTodoModal from "@/components/UpdateTodoModal";
+import ViewTodoModal from "@/components/ViewTodoModal";
+import { formatDateTime, formatDuration } from "@/components/todoFormUtils";
 import type { User } from "@/types/auth";
 import type { Todo, TodoCreateResponse, TodoListResponse } from "@/types/todo";
 
@@ -11,14 +15,14 @@ type FilterMode = "all" | "active" | "completed";
 export default function Dashboard() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [loading, setLoading] = useState(true); // Track whether the todos are being fetched from the backend.
-  const [title, setTitle] = useState("");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterMode>("all");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [editingTodoId, setEditingTodoId] = useState<number | null>(null);
-  const [editingTitle, setEditingTitle] = useState("");
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
+  const [viewingTodo, setViewingTodo] = useState<Todo | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -69,38 +73,48 @@ export default function Dashboard() {
     return () => window.cancelAnimationFrame(frameId);
   }, [router]);
 
-  const createTodo = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleTodoCreated = (todo: Todo) => {
+    setTodos((previous) => [todo, ...previous]); // dashboard immediately adds the returned Todo to state
+    setIsCreateModalOpen(false);
     setError("");
-    setSuccess("");
+    setSuccess("Todo created successfully.");
+  };
 
-    if (!title.trim()) {
-      setError("A title is required.");
-      return;
-    }
-
-    try {
-      const response = await api.post<TodoCreateResponse>("/todos", {
-        title,
-      });
-
-      setTodos((previous) => [response.data.todo, ...previous]); //frontend immediately adds the returned Todo to state
-      setTitle("");
-      setError("");
-      setSuccess("Todo created successfully.");
-    } catch {
-      setError("The todo could not be created.");
-    }
+  const handleTodoUpdated = (todo: Todo) => {
+    setTodos((previous) =>
+      previous.map((item) => (item.id === todo.id ? todo : item)),
+    );
+    setEditingTodo(null);
+    setError("");
+    setSuccess("Todo updated successfully.");
   };
 
   // Toggle completion by sending the updated todo to the backend.
   const toggleTodo = async (todo: Todo) => {
     try {
-      const response = await api.put<TodoCreateResponse>(`/todos/${todo.id}`, {
-        title: todo.title,
-        description: todo.description,
-        completed: !todo.completed,
-      });
+      const formData = new FormData();
+      formData.append("title", todo.title);
+
+      if (todo.description) {
+        formData.append("description", todo.description);
+      }
+
+      formData.append("completed", !todo.completed ? "1" : "0");
+
+      if (todo.start_time) {
+        formData.append("start_time", todo.start_time);
+      }
+
+      if (todo.end_time) {
+        formData.append("end_time", todo.end_time);
+      }
+
+      formData.append("_method", "PUT");
+
+      const response = await api.post<TodoCreateResponse>(
+        `/todos/${todo.id}`,
+        formData,
+      );
       setTodos((previous) =>
         previous.map((item) =>
           item.id === todo.id ? response.data.todo : item,
@@ -109,35 +123,6 @@ export default function Dashboard() {
       setError("");
     } catch {
       setError("The todo status could not be updated.");
-    }
-  };
-
-  const saveTodoEdit = async (todo: Todo) => {
-    const nextTitle = editingTitle.trim();
-
-    if (!nextTitle) {
-      setError("Todo text cannot be empty.");
-      return;
-    }
-
-    try {
-      const response = await api.put<TodoCreateResponse>(`/todos/${todo.id}`, {
-        title: nextTitle,
-        description: todo.description,
-        completed: todo.completed,
-      });
-
-      setTodos((previous) =>
-        previous.map((item) =>
-          item.id === todo.id ? response.data.todo : item,
-        ),
-      );
-      setEditingTodoId(null);
-      setEditingTitle("");
-      setError("");
-      setSuccess("Todo updated successfully.");
-    } catch {
-      setError("The todo could not be updated.");
     }
   };
 
@@ -198,11 +183,6 @@ export default function Dashboard() {
 
   const itemsLeft = todos.filter((todo) => !todo.completed).length; //This counts pending Todos.
 
-  const startEditing = (todo: Todo) => {
-    setEditingTodoId(todo.id);
-    setEditingTitle(todo.title);
-  };
-
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
       <header className="border-b border-slate-200 bg-white/90 backdrop-blur-sm">
@@ -248,78 +228,66 @@ export default function Dashboard() {
 
       <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
         <section className="space-y-5">
-          <form onSubmit={createTodo} className="space-y-4">
-            <label className="block">
-              <span className="sr-only">Add a new todo</span>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 rounded-full bg-white px-3 py-2 text-sm text-slate-500 ring-1 ring-slate-200 sm:max-w-xs sm:flex-1">
+              <span aria-hidden="true">
+                <svg
+                  className="w-4 h-4 text-body"
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeWidth="2"
+                    d="m21 21-3.5-3.5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"
+                  />
+                </svg>
+              </span>
               <input
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                placeholder="Add a new todo..."
-                className="w-full border-0 border-b border-slate-200 bg-transparent px-0 py-3 text-[15px] text-slate-900 outline-none transition duration-200 placeholder:text-slate-400 focus:border-blue-500"
-                required
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search todos"
+                className="w-full bg-transparent outline-none placeholder:text-slate-400"
               />
-            </label>
-
-            <button
-              type="submit"
-              className="rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-blue-700 cursor-pointer"
-            >
-              Add todo
-            </button>
-
-            <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2 rounded-full bg-white px-3 py-2 text-sm text-slate-500 ring-1 ring-slate-200">
-                <span aria-hidden="true">
-                  <svg
-                    className="w-4 h-4 text-body"
-                    aria-hidden="true"
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeWidth="2"
-                      d="m21 21-3.5-3.5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"
-                    />
-                  </svg>
-                </span>
-                <input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search todos"
-                  className="w-full bg-transparent outline-none placeholder:text-slate-400"
-                />
-              </div>
-
-              <div className="flex items-center gap-5 text-sm">
-                {(["all", "active", "completed"] as const).map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => setFilter(option)}
-                    className={`pb-1 transition duration-200 ${
-                      filter === option
-                        ? "border-b-2 border-blue-600 text-slate-900"
-                        : "border-b-2 border-transparent text-slate-500 hover:text-slate-900"
-                    }`}
-                  >
-                    {option === "active"
-                      ? "Pending"
-                      : option.charAt(0).toUpperCase() + option.slice(1)}
-                  </button>
-                ))}
-              </div>
             </div>
 
-            {error ? <p className="text-sm text-red-600">{error}</p> : null}
-            {success ? (
-              <p className="text-sm text-emerald-600">{success}</p>
-            ) : null}
-          </form>
+            <div className="flex items-center gap-5 text-sm">
+              {(["all", "active", "completed"] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => setFilter(option)}
+                  className={`pb-1 transition duration-200 ${
+                    filter === option
+                      ? "border-b-2 border-blue-600 text-slate-900"
+                      : "border-b-2 border-transparent text-slate-500 hover:text-slate-900"
+                  }`}
+                >
+                  {option === "active"
+                    ? "Pending"
+                    : option.charAt(0).toUpperCase() + option.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsCreateModalOpen(true)}
+              className="rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-blue-700 cursor-pointer"
+            >
+              + Create Todo
+            </button>
+          </div>
+
+          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+          {success ? (
+            <p className="text-sm text-emerald-600">{success}</p>
+          ) : null}
 
           <section className="rounded-2xl border border-slate-200 bg-white px-4 py-4 sm:px-5 sm:py-5">
             <div className="flex min-h-136 flex-col">
@@ -343,7 +311,9 @@ export default function Dashboard() {
                     </div>
                   ) : (
                     filteredTodos.map((todo) => {
-                      const isEditing = editingTodoId === todo.id;
+                      const startLabel = formatDateTime(todo.start_time);
+                      const endLabel = formatDateTime(todo.end_time);
+                      const durationLabel = formatDuration(todo.duration);
 
                       return (
                         <article
@@ -353,7 +323,7 @@ export default function Dashboard() {
                           <button
                             type="button"
                             onClick={() => void toggleTodo(todo)}
-                            className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border transition duration-200 ${
+                            className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition duration-200 ${
                               todo.completed
                                 ? "border-blue-600 bg-blue-600 text-white"
                                 : "border-slate-300 bg-white text-transparent hover:border-blue-500"
@@ -367,42 +337,64 @@ export default function Dashboard() {
                             <span className="text-[11px] leading-none">✓</span>
                           </button>
 
-                          <div className="min-w-0 flex-1">
-                            {isEditing ? (
-                              <input
-                                autoFocus
-                                value={editingTitle}
-                                onChange={(event) =>
-                                  setEditingTitle(event.target.value)
-                                }
-                                onBlur={() => void saveTodoEdit(todo)}
-                                onKeyDown={(event) => {
-                                  if (event.key === "Enter") {
-                                    event.preventDefault();
-                                    void saveTodoEdit(todo);
-                                  }
-
-                                  if (event.key === "Escape") {
-                                    setEditingTodoId(null);
-                                    setEditingTitle("");
-                                  }
-                                }}
-                                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-500"
-                              />
-                            ) : (
-                              <button
-                                type="button"
-                                onDoubleClick={() => startEditing(todo)}
-                                className={`block w-full text-left text-sm leading-6 transition duration-200 ${
-                                  todo.completed
-                                    ? "text-slate-400 line-through"
-                                    : "text-slate-800"
-                                }`}
+                          {todo.image_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={todo.image_url}
+                              alt=""
+                              className="h-14 w-14 shrink-0 rounded-lg object-cover ring-1 ring-slate-200"
+                            />
+                          ) : (
+                            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-300">
+                              <svg
+                                className="h-6 w-6"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
                               >
-                                {todo.title}
-                              </button>
-                            )}
-                          </div>
+                                <path
+                                  stroke="currentColor"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="1.5"
+                                  d="M4 16.5 8 12l3 3 5-6 4 5M4 6h16v12H4z"
+                                />
+                              </svg>
+                            </div>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => setViewingTodo(todo)}
+                            className="min-w-0 flex-1 text-left cursor-pointer"
+                          >
+                            <p
+                              className={`block w-full text-left text-sm leading-6 transition duration-200 ${
+                                todo.completed
+                                  ? "text-slate-400 line-through"
+                                  : "text-slate-800"
+                              }`}
+                            >
+                              {todo.title}
+                            </p>
+
+                            {todo.description ? (
+                              <p className="mt-0.5 text-sm text-slate-500">
+                                {todo.description}
+                              </p>
+                            ) : null}
+
+                            {startLabel || endLabel || durationLabel ? (
+                              <p className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-400">
+                                {startLabel ? <span>Start: {startLabel}</span> : null}
+                                {endLabel ? <span>End: {endLabel}</span> : null}
+                                {durationLabel ? (
+                                  <span>Duration: {durationLabel}</span>
+                                ) : null}
+                              </p>
+                            ) : null}
+                          </button>
 
                           <div className="flex items-center gap-1 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
                             <button
@@ -420,7 +412,37 @@ export default function Dashboard() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => startEditing(todo)}
+                              onClick={() => setViewingTodo(todo)}
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition duration-200 hover:bg-slate-100 hover:text-slate-700"
+                              aria-label="View todo"
+                              title="View"
+                            >
+                              <svg
+                                className="h-4 w-4"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  stroke="currentColor"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="1.5"
+                                  d="M2.5 12s3.5-7 9.5-7 9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z"
+                                />
+                                <circle
+                                  cx="12"
+                                  cy="12"
+                                  r="2.5"
+                                  stroke="currentColor"
+                                  strokeWidth="1.5"
+                                />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingTodo(todo)}
                               className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition duration-200 hover:bg-slate-100 hover:text-slate-700"
                               aria-label="Edit todo"
                               title="Edit"
@@ -459,6 +481,33 @@ export default function Dashboard() {
           </section>
         </section>
       </div>
+
+      {isCreateModalOpen ? (
+        <CreateTodoModal
+          onClose={() => setIsCreateModalOpen(false)}
+          onCreated={handleTodoCreated}
+        />
+      ) : null}
+
+      {editingTodo ? (
+        <UpdateTodoModal
+          key={editingTodo.id}
+          todo={editingTodo}
+          onClose={() => setEditingTodo(null)}
+          onUpdated={handleTodoUpdated}
+        />
+      ) : null}
+
+      {viewingTodo ? (
+        <ViewTodoModal
+          todo={viewingTodo}
+          onClose={() => setViewingTodo(null)}
+          onEdit={() => {
+            setEditingTodo(viewingTodo);
+            setViewingTodo(null);
+          }}
+        />
+      ) : null}
     </main>
   );
 }
