@@ -101,11 +101,20 @@ export function toApiDateTime(localValue: string): string {
   return new Date(localValue).toISOString();
 }
 
+// The current moment as a `datetime-local` value, used as the `min` on the
+// start/end inputs so the browser's own date picker won't offer past dates.
+export function nowAsDateTimeLocalValue(): string {
+  return toDateTimeLocalValue(new Date().toISOString());
+}
+
 // Validates the shared title/time/image rules used by both create and update forms.
+// `disallowPastDates` is only turned on for creating a new Todo — editing an
+// already-overdue Todo without touching its dates should still be allowed.
 // Returns an error message, or null if the form is valid.
 export function validateTodoForm(
   form: TodoFormState,
   imageFile: File | null,
+  disallowPastDates = false,
 ): string | null {
   if (!form.title.trim()) {
     return "A title is required.";
@@ -117,6 +126,18 @@ export function validateTodoForm(
     new Date(form.endTime) < new Date(form.startTime)
   ) {
     return "End time cannot be earlier than start time.";
+  }
+
+  if (disallowPastDates) {
+    const now = new Date();
+
+    if (form.startTime && new Date(form.startTime) < now) {
+      return "Start time cannot be in the past.";
+    }
+
+    if (form.endTime && new Date(form.endTime) < now) {
+      return "End time cannot be in the past.";
+    }
   }
 
   if (imageFile) {

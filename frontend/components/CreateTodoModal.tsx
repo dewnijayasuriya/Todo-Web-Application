@@ -41,7 +41,7 @@ export default function CreateTodoModal({
     event.preventDefault();
     setError("");
 
-    const validationError = validateTodoForm(form, imageFile);
+    const validationError = validateTodoForm(form, imageFile, true);
 
     if (validationError) {
       setError(validationError);
@@ -94,6 +94,7 @@ export default function CreateTodoModal({
           imageFile={imageFile}
           onImageChange={setImageFile}
           disabled={isSubmitting}
+          disallowPastDates
         />
 
         {error ? <p className="text-sm text-red-600">{error}</p> : null}

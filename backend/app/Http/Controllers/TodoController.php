@@ -15,7 +15,7 @@ class TodoController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255', // Ensures title is required, must be a string and should not exceed 255 characters
             'description' => 'nullable|string', // Description is optional but must be text if provided.
-            'start_time' => 'nullable|date',
+            'start_time' => 'nullable|date|after_or_equal:now', // new todos can't be scheduled in the past
             'end_time' => 'nullable|date|after_or_equal:start_time',
             'image' => self::IMAGE_RULES,
         ]);

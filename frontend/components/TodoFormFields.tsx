@@ -5,6 +5,7 @@ import ImageDropzone from "./ImageDropzone";
 import {
   computeDurationMinutes,
   formatDuration,
+  nowAsDateTimeLocalValue,
   type TodoFormState,
 } from "./todoFormUtils";
 
@@ -17,6 +18,10 @@ type TodoFormFieldsProps = {
   onRemoveExistingImage?: () => void;
   imageRemoved?: boolean;
   disabled?: boolean;
+  // Only set for creating a new Todo: stops the date pickers from offering
+  // past dates. Left off for editing, since an already-overdue Todo should
+  // still be editable without being forced to move its dates forward.
+  disallowPastDates?: boolean;
 };
 
 // The field set shared by the create and update Todo modals: title,
@@ -31,7 +36,13 @@ export default function TodoFormFields({
   onRemoveExistingImage,
   imageRemoved,
   disabled,
+  disallowPastDates,
 }: TodoFormFieldsProps) {
+  const minDateTime = useMemo(
+    () => (disallowPastDates ? nowAsDateTimeLocalValue() : undefined),
+    [disallowPastDates],
+  );
+
   const imagePreview = useMemo(
     () => (imageFile ? URL.createObjectURL(imageFile) : null),
     [imageFile],
@@ -104,6 +115,7 @@ export default function TodoFormFields({
             onChange={(event) =>
               onChange({ ...form, startTime: event.target.value })
             }
+            min={minDateTime}
             disabled={disabled}
             className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none transition duration-200 focus:border-blue-500 focus:bg-white disabled:opacity-60"
           />
@@ -123,6 +135,7 @@ export default function TodoFormFields({
             onChange={(event) =>
               onChange({ ...form, endTime: event.target.value })
             }
+            min={minDateTime}
             disabled={disabled}
             className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none transition duration-200 focus:border-blue-500 focus:bg-white disabled:opacity-60"
           />
